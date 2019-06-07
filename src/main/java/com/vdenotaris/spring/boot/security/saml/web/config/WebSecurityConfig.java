@@ -213,10 +213,10 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter implements I
         DefaultResourceLoader loader = new DefaultResourceLoader();
         Resource storeFile = loader
                 .getResource("classpath:/saml/samlKeystore.jks");
-        String storePass = "nalle123";
+        String storePass = "samlNist";
         Map<String, String> passwords = new HashMap<String, String>();
-        passwords.put("apollo", "nalle123");
-        String defaultKey = "apollo";
+        passwords.put("samlNist", "samlNist");
+        String defaultKey = "samlNist";
         return new JKSKeyManager(storeFile, storePass, passwords, defaultKey);
     }
  
@@ -246,9 +246,11 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter implements I
     @Bean
     public ExtendedMetadata extendedMetadata() {
 	    	ExtendedMetadata extendedMetadata = new ExtendedMetadata();
+//	    	extendedMetadata.setLocal(true);
 	    	extendedMetadata.setIdpDiscoveryEnabled(true); 
 	    	extendedMetadata.setSignMetadata(false);
 	    	extendedMetadata.setEcpEnabled(true);
+	    	
 	    	return extendedMetadata;
     }
     
@@ -264,8 +266,10 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter implements I
 	@Qualifier("idp-ssocircle")
 	public ExtendedMetadataDelegate ssoCircleExtendedMetadataProvider()
 			throws MetadataProviderException {
-		String idpSSOCircleMetadataURL = "https://idp.ssocircle.com/idp-meta.xml";
-		HTTPMetadataProvider httpMetadataProvider = new HTTPMetadataProvider(
+//		String idpSSOCircleMetadataURL = "https://idp.ssocircle.com/idp-meta.xml";
+	    //String idpSSOCircleMetadataURL = "http://localhost:8086/meta.xml";
+	    String idpSSOCircleMetadataURL = "http://localhost:8086/federationmetadata.xml";	
+	    HTTPMetadataProvider httpMetadataProvider = new HTTPMetadataProvider(
 				this.backgroundTaskTimer, httpClient(), idpSSOCircleMetadataURL);
 		httpMetadataProvider.setParserPool(parserPool());
 		ExtendedMetadataDelegate extendedMetadataDelegate = 
@@ -291,7 +295,8 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter implements I
     @Bean
     public MetadataGenerator metadataGenerator() {
         MetadataGenerator metadataGenerator = new MetadataGenerator();
-        metadataGenerator.setEntityId("com:vdenotaris:spring:sp");
+        metadataGenerator.setEntityId("com:deoyani:spring:sp");
+        metadataGenerator.setEntityBaseURL("https://PN110559.nist.gov");
         metadataGenerator.setExtendedMetadata(extendedMetadata());
         metadataGenerator.setIncludeDiscoveryExtension(false);
         metadataGenerator.setKeyManager(keyManager()); 
