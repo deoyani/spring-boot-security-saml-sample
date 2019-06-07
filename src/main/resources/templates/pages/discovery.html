@@ -24,6 +24,7 @@
         <fieldset class="form-group">
           <div class="form-check" th:each="idp : ${idps}">
             <label class="form-check-label">
+             <span th:text="${idpDiscoReturnURL}">TEST</span>
               <input type="radio" class="form-check-input" th:name="${idpDiscoReturnParam}" th:id="'idp_' + ${idp}" th:value="${idp}" />
               <span class="badge badge-dark" th:text="${idp}">null</span>
             </label>

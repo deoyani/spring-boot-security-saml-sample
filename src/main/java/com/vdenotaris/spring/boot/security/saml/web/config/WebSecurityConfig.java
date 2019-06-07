@@ -16,6 +16,8 @@
 
 package com.vdenotaris.spring.boot.security.saml.web.config;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -26,6 +28,7 @@ import java.util.Timer;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.MultiThreadedHttpConnectionManager;
 import org.apache.velocity.app.VelocityEngine;
+import org.opensaml.saml2.metadata.provider.FilesystemMetadataProvider;
 import org.opensaml.saml2.metadata.provider.HTTPMetadataProvider;
 import org.opensaml.saml2.metadata.provider.MetadataProvider;
 import org.opensaml.saml2.metadata.provider.MetadataProviderException;
@@ -43,6 +46,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.saml.SAMLAuthenticationProvider;
@@ -95,6 +99,9 @@ import org.springframework.security.web.authentication.logout.SecurityContextLog
 import org.springframework.security.web.authentication.logout.SimpleUrlLogoutSuccessHandler;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.security.web.firewall.DefaultHttpFirewall;
+import org.springframework.security.web.firewall.HttpFirewall;
+import org.springframework.security.web.firewall.StrictHttpFirewall;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 import com.vdenotaris.spring.boot.security.saml.web.core.SAMLUserDetailsServiceImpl;
@@ -213,10 +220,10 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter implements I
         DefaultResourceLoader loader = new DefaultResourceLoader();
         Resource storeFile = loader
                 .getResource("classpath:/saml/samlKeystore.jks");
-        String storePass = "nalle123";
+        String storePass = "samlNist";
         Map<String, String> passwords = new HashMap<String, String>();
-        passwords.put("apollo", "nalle123");
-        String defaultKey = "apollo";
+        passwords.put("samlNist", "samlNist");
+        String defaultKey = "samlNist";
         return new JKSKeyManager(storeFile, storePass, passwords, defaultKey);
     }
  
@@ -246,9 +253,11 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter implements I
     @Bean
     public ExtendedMetadata extendedMetadata() {
 	    	ExtendedMetadata extendedMetadata = new ExtendedMetadata();
+//	    	extendedMetadata.setLocal(true);
 	    	extendedMetadata.setIdpDiscoveryEnabled(true); 
 	    	extendedMetadata.setSignMetadata(false);
 	    	extendedMetadata.setEcpEnabled(true);
+	    	
 	    	return extendedMetadata;
     }
     
@@ -264,14 +273,32 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter implements I
 	@Qualifier("idp-ssocircle")
 	public ExtendedMetadataDelegate ssoCircleExtendedMetadataProvider()
 			throws MetadataProviderException {
-		String idpSSOCircleMetadataURL = "https://idp.ssocircle.com/idp-meta.xml";
-		HTTPMetadataProvider httpMetadataProvider = new HTTPMetadataProvider(
-				this.backgroundTaskTimer, httpClient(), idpSSOCircleMetadataURL);
-		httpMetadataProvider.setParserPool(parserPool());
+//		String idpSSOCircleMetadataURL = "https://idp.ssocircle.com/idp-meta.xml";
+//String idpSSOCircleMetadataURL = "http://localhost:8081/sample-idp/saml/idp/metadata";
+//	    String idpSSOCircleMetadataURL = "http://localhost:8086/federationmetadata.xml";	
+
+
+DefaultResourceLoader loader = new DefaultResourceLoader();
+Resource storeFile = loader.getResource("classpath:/saml/saml-idp-metadata.xml");
+
+File metadataFile = null;
+try {
+    metadataFile = storeFile.getFile();
+} catch (IOException e) {
+    // TODO Auto-generated catch block
+    e.printStackTrace();
+}
+
+FilesystemMetadataProvider fsMetadataProvider = new FilesystemMetadataProvider(metadataFile);
+//	    HTTPMetadataProvider httpMetadataProvider = new HTTPMetadataProvider(
+//				this.backgroundTaskTimer, httpClient(), idpSSOCircleMetadataURL);
+//		httpMetadataProvider.setParserPool(parserPool());
+fsMetadataProvider.setParserPool(parserPool());
 		ExtendedMetadataDelegate extendedMetadataDelegate = 
-				new ExtendedMetadataDelegate(httpMetadataProvider, extendedMetadata());
-		extendedMetadataDelegate.setMetadataTrustCheck(true);
+				new ExtendedMetadataDelegate(fsMetadataProvider, extendedMetadata());
+		extendedMetadataDelegate.setMetadataTrustCheck(false);
 		extendedMetadataDelegate.setMetadataRequireSignature(false);
+		
 		backgroundTaskTimer.purge();
 		return extendedMetadataDelegate;
 	}
@@ -291,7 +318,10 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter implements I
     @Bean
     public MetadataGenerator metadataGenerator() {
         MetadataGenerator metadataGenerator = new MetadataGenerator();
-        metadataGenerator.setEntityId("com:vdenotaris:spring:sp");
+//        metadataGenerator.setEntityId("com:deoyani:spring:sp");
+//        metadataGenerator.setEntityBaseURL("https://PN110559.nist.gov");
+        metadataGenerator.setEntityId("spring-security-saml-local-sp");
+        metadataGenerator.setEntityBaseURL("http://localhost:8084/");
         metadataGenerator.setExtendedMetadata(extendedMetadata());
         metadataGenerator.setIncludeDiscoveryExtension(false);
         metadataGenerator.setKeyManager(keyManager()); 
@@ -473,6 +503,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter implements I
         return super.authenticationManagerBean();
     }
      
+    
     /**
      * Defines the web based security configuration.
      * 
@@ -511,6 +542,8 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter implements I
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
         auth
             .authenticationProvider(samlAuthenticationProvider());
+     
+
     }
 
     @Override
@@ -521,6 +554,24 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter implements I
     @Override
     public void destroy() throws Exception {
         shutdown();
+    }
+    
+    @Override
+    public void configure(WebSecurity web) throws Exception {
+	super.configure(web);
+	web.httpFirewall(defaultHttpFirewall());
+    }
+    
+    @Bean
+    public HttpFirewall allowUrlEncodedSlashHttpFirewall() {
+        StrictHttpFirewall firewall = new StrictHttpFirewall();
+        firewall.setAllowUrlEncodedSlash(true);    
+        return firewall;
+    }
+    
+    @Bean
+    public HttpFirewall defaultHttpFirewall() {
+        return new DefaultHttpFirewall();
     }
 
 }
